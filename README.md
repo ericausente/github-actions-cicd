@@ -75,7 +75,7 @@ After pushing the changes, navigate to the Actions tab in your GitHub repository
 
 
 
-# Run the Docker image you just pushed on an EC2 instance
+# Enhancement #1 Run the Docker image you just pushed on an EC2 instance
 
 
 To automatically run the Docker image you just pushed on an EC2 instance, you can use GitHub Actions to SSH into the EC2 instance and execute the necessary Docker commands. Here's a step-by-step guide:
@@ -150,6 +150,69 @@ The action appleboy/ssh-action@master is a popular GitHub Action for executing r
 The example assumes you're running a web service on port 80 in your Docker container. Adjust the port mapping (-p 8083:80) as needed.
 Ensure the EC2 instance has enough resources (CPU, memory) to run the Docker container. Also ensure that you have allowed the necessary ports to be accessed from your Security Group. 
 Always handle secrets like the PEM file with care. Using GitHub secrets is a secure way to provide your workflow with necessary credentials without exposing them.
+
+
+
+# Enhancement # 2: Container vulnerability checks using Trivy prior to pushing to Dockerhub
+
+Incorporating container vulnerability checks into your CI/CD pipeline is a great practice to ensure the security of your applications. One of the popular tools for this purpose is Trivy by Aqua Security. Here's how you can integrate Trivy with your GitHub Actions workflow to scan Docker images for vulnerabilities:
+
+1. Set Up Trivy in GitHub Actions:
+Add Trivy to Your Workflow:
+After building your Docker image, you can add a step to scan it using Trivy. Here's a sample workflow snippet:
+
+
+
+```
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main  # or your default branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build the Docker image
+        run: |
+          docker build . -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx-agent-github:latest --no-cache -f ./Dockerfile --secret id=nginx-crt,src=./nginx-repo.crt --secret id=nginx-key,src=./nginx-repo.key --build-arg BASE_IMAGE=ubuntu --build-arg PACKAGES_REPO=pkgs.nginx.com
+     
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/nginx-agent-github:latest'
+          exit-code: '1'  # This will fail the build if vulnerabilities are found
+          ignore-unfixed: 'true'  # This will ignore vulnerabilities without fixes. Set to 'false' if you want to consider them.
+          format: 'table'  # The output format of the vulnerabilities. 'table' or 'json'.
+          severity: 'CRITICAL,HIGH'  # Only consider vulnerabilities of specified severity.
+          
+      - name: Push the Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx-agent-github:latest
+
+      - name: Deploy Docker image to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_PEM }}
+          script: |
+            docker pull ausente/nginx-agent-github:latest
+            docker stop $(docker ps -q) || true
+            docker run -d -p 8083:80 ausente/nginx-agent-github:latest
+```
+
 
 
 # PENDING ENHANCEMENT: Automating Kubernetes Deployment with GitHub Actions
