@@ -122,3 +122,27 @@ Important Note:
 This setup provides a basic integration of Kubernetes deployment with GitHub Actions. Depending on your specific requirements and the complexity of your application, you might need to make further adjustments.
 
 Handling Kubernetes credentials securely is of utmost importance. Always ensure that sensitive information is not exposed. For more advanced deployment scenarios or enhanced security features, consider using specialized CI/CD tools or Kubernetes operators.
+
+Pending:
+
+```
+- name: Set up AWS CLI
+      run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install
+        aws --version
+
+    - name: Configure AWS credentials
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region your-region-name # e.g., us-west-2
+
+    - name: Update kubeconfig for EKS cluster
+      run: |
+        aws eks update-kubeconfig --name your-eks-cluster-name
+
+    - name: Deploy to EKS
+      run: kubectl apply -f deployment.yaml
+```
