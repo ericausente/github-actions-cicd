@@ -75,7 +75,7 @@ After pushing the changes, navigate to the Actions tab in your GitHub repository
 
 
 
-# Automating Kubernetes Deployment with GitHub Actions
+# PENDING ENHANCEMENT: Automating Kubernetes Deployment with GitHub Actions
 After successfully building and pushing your Docker image using GitHub Actions, you can further automate the deployment of this image to a Kubernetes cluster. This section provides a step-by-step guide on how to set this up.
 
 ## Prerequisites:
