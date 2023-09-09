@@ -75,6 +75,83 @@ After pushing the changes, navigate to the Actions tab in your GitHub repository
 
 
 
+# Run the Docker image you just pushed on an EC2 instance
+
+
+To automatically run the Docker image you just pushed on an EC2 instance, you can use GitHub Actions to SSH into the EC2 instance and execute the necessary Docker commands. Here's a step-by-step guide:
+
+
+Prerequisites:
+Docker Installed on EC2: Ensure that Docker is installed and running on your EC2 instance.
+Open SSH Port: Ensure that the EC2 instance's security group allows SSH traffic (port 22) from the GitHub Actions runner IP addresses.
+Steps:
+
+## Set Up Secrets:
+
+In your GitHub repository, add the following secrets:
+EC2_HOST: The public IP address or DNS name of your EC2 instance.
+EC2_PEM: The content of your PEM file (private key) for the EC2 instance.
+
+## Update Your Workflow:
+Add the following steps to your GitHub Actions workflow:
+
+```
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main  # or your default branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build the Docker image
+        run: |
+          docker build . -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx-agent-github:latest --no-cache -f ./Dockerfile --secret id=nginx-crt,src=./nginx-repo.crt --secret id=nginx-key,src=./nginx-repo.key --build-arg BASE_IMAGE=ubuntu --build-arg PACKAGES_REPO=pkgs.nginx.com
+      - name: Push the Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx-agent-github:latest
+
+      - name: Deploy Docker image to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_PEM }}
+          script: |
+            docker pull ausente/nginx-agent-github:latest
+            docker stop $(docker ps -q) || true
+            docker run -d -p 8083:80 ausente/nginx-agent-github:latest
+```
+
+
+This workflow does the following:
+
+- SSH into the EC2 instance.
+- Pull the latest version of your Docker image.
+- Stop any running containers (you can modify this as needed).
+- Run the Docker image.
+- Run the Workflow:
+After updating your workflow with the above steps, commit and push your changes. When the workflow runs, it will SSH into the EC2 instance and deploy the Docker image.
+
+Notes:
+The action appleboy/ssh-action@master is a popular GitHub Action for executing remote SSH commands. Ensure you trust any third-party action you use.
+The example assumes you're running a web service on port 80 in your Docker container. Adjust the port mapping (-p 8083:80) as needed.
+Ensure the EC2 instance has enough resources (CPU, memory) to run the Docker container. Also ensure that you have allowed the necessary ports to be accessed from your Security Group. 
+Always handle secrets like the PEM file with care. Using GitHub secrets is a secure way to provide your workflow with necessary credentials without exposing them.
+
+
 # PENDING ENHANCEMENT: Automating Kubernetes Deployment with GitHub Actions
 After successfully building and pushing your Docker image using GitHub Actions, you can further automate the deployment of this image to a Kubernetes cluster. This section provides a step-by-step guide on how to set this up.
 
