@@ -59,15 +59,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      -
-        name: Build the Docker image
+
+      - name: Build the Docker image
         run: |
           docker build . -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx-agent-github:latest --no-cache -f ./Dockerfile --secret id=nginx-crt,src=./nginx-repo.crt --secret id=nginx-key,src=./nginx-repo.key --build-arg BASE_IMAGE=ubuntu --build-arg PACKAGES_REPO=pkgs.nginx.com
-      -
-        name: Push the Docker image
+      - name: Push the Docker image
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx-agent-github:latest
 ```
 
